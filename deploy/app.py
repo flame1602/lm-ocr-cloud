@@ -264,6 +264,16 @@ def health():
     return jsonify({"status": "ok", "ocr_running": ocr_state["running"]})
 
 
+@app.route("/api/vllm-status")
+def vllm_status():
+    import urllib.request
+    try:
+        req = urllib.request.urlopen(f"http://localhost:{VLLM_PORT}/health", timeout=3)
+        return jsonify({"ready": True, "status": "online"})
+    except Exception:
+        return jsonify({"ready": False, "status": "loading"})
+
+
 # === HTML Templates (inline) ===
 
 LOGIN_HTML = """<!DOCTYPE html>
@@ -385,6 +395,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle
   <div class="hdr">
     <h1>🔵 GLM-OCR — PDF to Markdown</h1>
     <p>Upload PDF → OCR tự động → Tải Markdown</p>
+    <div id="vllm-badge" style="position:absolute;top:16px;left:20px;padding:6px 14px;border-radius:8px;font-size:11px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text2)">vLLM: ...</div>
     <a href="/logout" class="lo">🔒 Đăng xuất</a>
   </div>
   <div class="cd">
@@ -441,6 +452,8 @@ function dAll(){window.open("/api/download_all");}
 document.getElementById("btnAll").addEventListener("click",dAll);
 document.getElementById("btnCloseMo").addEventListener("click",cMo);
 document.getElementById("mov").addEventListener("click",function(e){if(e.target===document.getElementById("mov"))cMo();});
+function checkVllm(){fetch("/api/vllm-status").then(function(r){return r.json();}).then(function(d){var b=document.getElementById("vllm-badge");if(d.ready){b.innerHTML="vLLM: <b style='color:#10b981'>Online</b>";b.style.borderColor="rgba(16,185,129,0.3)";document.getElementById("bo").disabled=false;}else{b.innerHTML="vLLM: <b style='color:#f59e0b'>Loading...</b>";b.style.borderColor="rgba(245,158,11,0.3)";document.getElementById("bo").disabled=true;setTimeout(checkVllm,5000);}}).catch(function(){var b=document.getElementById("vllm-badge");b.innerHTML="vLLM: <b style='color:#ef4444'>Offline</b>";setTimeout(checkVllm,10000);});}
+checkVllm();
 rF();
 fetch("/api/status").then(function(r){return r.json();}).then(function(s){if(s&&s.running){document.getElementById("pbx").classList.add("on");document.getElementById("bo").disabled=true;sP();}}).catch(function(){});
 </script>
