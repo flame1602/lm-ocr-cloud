@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLM-OCR — PDF to Markdown</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --bg2: #111827;
+  --card: rgba(17,24,39,0.7);
+  --border: rgba(255,255,255,0.08);
+  --text: #e5e7eb;
+  --text2: #9ca3af;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --accent-glow: rgba(99,102,241,0.3);
+  --success: #10b981;
+  --error: #ef4444;
+  --warn: #f59e0b;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before {
+  content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+  background:radial-gradient(circle at 30% 20%,rgba(99,102,241,0.08),transparent 50%),
+             radial-gradient(circle at 70% 80%,rgba(16,185,129,0.06),transparent 50%);
+  z-index:0;
+}
+.container { max-width:1100px; margin:0 auto; padding:24px 20px; position:relative; z-index:1; }
+
+/* Header */
+.header {
+  text-align:center; margin-bottom:32px; padding:28px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; backdrop-filter:blur(20px);
+}
+.header h1 {
+  font-size:28px; font-weight:700;
+  background:linear-gradient(135deg,#818cf8,#6366f1,#10b981);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.header p { color:var(--text2); margin-top:6px; font-size:14px; }
+
+/* Cards */
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:24px; margin-bottom:20px;
+  backdrop-filter:blur(20px); transition:border-color 0.3s;
+}
+.card:hover { border-color:rgba(99,102,241,0.2); }
+.card h2 {
+  font-size:16px; font-weight:600; margin-bottom:16px;
+  display:flex; align-items:center; gap:8px;
+}
+.card h2 .icon { font-size:20px; }
+
+/* Upload Zone */
+.upload-zone {
+  border:2px dashed rgba(99,102,241,0.3); border-radius:12px;
+  padding:40px; text-align:center; cursor:pointer;
+  transition:all 0.3s; position:relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--accent); background:rgba(99,102,241,0.05);
+  box-shadow:0 0 30px var(--accent-glow);
+}
+.upload-zone .emoji { font-size:40px; margin-bottom:10px; }
+.upload-zone p { color:var(--text2); font-size:14px; }
+.upload-zone .sub { font-size:12px; margin-top:6px; color:var(--text2); opacity:0.6; }
+.upload-zone input { display:none; }
+
+/* Grid */
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media(max-width:768px){ .grid{grid-template-columns:1fr;} }
+
+/* File List */
+.file-list { max-height:260px; overflow-y:auto; }
+.file-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-radius:8px; margin-bottom:6px;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  font-size:13px; transition:background 0.2s;
+}
+.file-item:hover { background:rgba(255,255,255,0.06); }
+.file-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-size { color:var(--text2); font-size:11px; margin-left:8px; flex-shrink:0; }
+.file-actions { display:flex; gap:4px; margin-left:8px; flex-shrink:0; }
+
+/* Buttons */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:8px; border:none;
+  font-family:inherit; font-size:13px; font-weight:500;
+  cursor:pointer; transition:all 0.2s; color:#fff;
+}
+.btn-primary {
+  background:linear-gradient(135deg,var(--accent),#4f46e5);
+  box-shadow:0 4px 15px var(--accent-glow);
+}
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px var(--accent-glow); }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+.btn-sm { padding:5px 10px; font-size:11px; border-radius:6px; }
+.btn-ghost { background:rgba(255,255,255,0.06); color:var(--text2); }
+.btn-ghost:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+.btn-danger { background:rgba(239,68,68,0.15); color:var(--error); }
+.btn-danger:hover { background:rgba(239,68,68,0.25); }
+.btn-success { background:rgba(16,185,129,0.15); color:var(--success); }
+.btn-success:hover { background:rgba(16,185,129,0.25); }
+.btn-full { width:100%; justify-content:center; padding:12px; font-size:15px; }
+
+/* Progress */
+.progress-box { display:none; }
+.progress-box.active { display:block; }
+.progress-bar-wrap {
+  height:8px; background:rgba(255,255,255,0.06);
+  border-radius:4px; overflow:hidden; margin:12px 0;
+}
+.progress-bar {
+  height:100%; border-radius:4px; transition:width 0.5s ease;
+  background:linear-gradient(90deg,var(--accent),var(--success));
+  box-shadow:0 0 12px var(--accent-glow);
+}
+.progress-info {
+  display:flex; justify-content:space-between; font-size:12px; color:var(--text2);
+}
+.progress-file {
+  font-size:13px; color:var(--accent2); margin-bottom:8px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.stat-row {
+  display:flex; gap:16px; margin-top:12px; flex-wrap:wrap;
+}
+.stat {
+  padding:8px 14px; border-radius:8px;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  font-size:12px;
+}
+.stat b { color:var(--accent2); }
+
+/* Result actions */
+.result-actions { display:flex; gap:6px; }
+
+/* Modal */
+.modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:1000; backdrop-filter:blur(4px);
+  justify-content:center; align-items:center; padding:20px;
+}
+.modal-overlay.active { display:flex; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:16px; width:100%; max-width:800px;
+  max-height:85vh; display:flex; flex-direction:column;
+}
+.modal-header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 20px; border-bottom:1px solid var(--border);
+}
+.modal-header h3 { font-size:15px; }
+.modal-close {
+  background:none; border:none; color:var(--text2);
+  font-size:20px; cursor:pointer; padding:4px 8px; border-radius:6px;
+}
+.modal-close:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+.modal-body {
+  padding:20px; overflow-y:auto; flex:1;
+  font-size:13px; line-height:1.7;
+}
+.modal-body pre {
+  background:rgba(0,0,0,0.3); padding:12px; border-radius:8px;
+  overflow-x:auto; font-size:12px;
+}
+.modal-body table { border-collapse:collapse; width:100%; margin:12px 0; }
+.modal-body th, .modal-body td {
+  border:1px solid var(--border); padding:6px 10px; text-align:left; font-size:12px;
+}
+.modal-body th { background:rgba(255,255,255,0.04); }
+
+/* Empty state */
+.empty { text-align:center; padding:24px; color:var(--text2); font-size:13px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:24px; right:24px; z-index:2000;
+  padding:12px 20px; border-radius:10px; font-size:13px;
+  background:var(--bg2); border:1px solid var(--border);
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  transform:translateY(80px); opacity:0; transition:all 0.3s;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.success { border-color:rgba(16,185,129,0.3); }
+.toast.error { border-color:rgba(239,68,68,0.3); }
+
+/* Pulse animation */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.pulsing { animation:pulse 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📄 GLM-OCR — PDF to Markdown</h1>
+    <p>Upload PDF, tự động OCR thành Markdown với GLM-OCR</p>
+  </div>
+
+  <!-- Upload -->
+  <div class="card">
+    <h2><span class="icon">📤</span> Upload PDF</h2>
+    <div class="upload-zone" id="uploadZone">
+      <div class="emoji">📁</div>
+      <p>Kéo thả file PDF vào đây hoặc <b>nhấn để chọn</b></p>
+      <div class="sub">Hỗ trợ nhiều file cùng lúc</div>
+      <input type="file" id="fileInput" multiple accept=".pdf">
+    </div>
+  </div>
+
+  <!-- Files & Results -->
+  <div class="grid">
+    <div class="card">
+      <h2><span class="icon">📋</span> File PDF <span id="pdfCount" style="color:var(--text2);font-weight:400"></span></h2>
+      <div id="pdfList" class="file-list"><div class="empty">Chưa có file nào</div></div>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-full" id="btnOcr" onclick="startOcr()">🔍 Bắt đầu OCR</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="icon">✅</span> Kết quả Markdown <span id="mdCount" style="color:var(--text2);font-weight:400"></span></h2>
+      <div id="mdList" class="file-list"><div class="empty">Chưa có kết quả</div></div>
+      <div style="margin-top:14px">
+        <button class="btn btn-success btn-full" onclick="downloadAll()">📦 Tải tất cả (ZIP)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card progress-box" id="progressBox">
+    <h2><span class="icon pulsing">⚡</span> Đang OCR...</h2>
+    <div class="progress-file" id="progressFile">—</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+    <div class="progress-info">
+      <span id="progressText">0%</span>
+      <span id="progressTime">0s</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat">File: <b id="statFiles">0/0</b></div>
+      <div class="stat">Trang: <b id="statPages">0/0</b></div>
+      <div class="stat">Thời gian: <b id="statTime">0s</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Preview</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let pollTimer = null;
+
+// === Helpers ===
+function fmt(bytes) {
+  if(bytes<1024) return bytes+'B';
+  if(bytes<1048576) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// === Upload ===
+const zone = document.getElementById('uploadZone');
+const input = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => input.click());
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  uploadFiles(e.dataTransfer.files);
+});
+input.addEventListener('change', () => { if(input.files.length) uploadFiles(input.files); });
+
+async function uploadFiles(files) {
+  const fd = new FormData();
+  let count = 0;
+  for (const f of files) {
+    if (f.name.toLowerCase().endsWith('.pdf')) { fd.append('files', f); count++; }
+  }
+  if (!count) { toast('Chỉ hỗ trợ file PDF', 'error'); return; }
+
+  try {
+    const r = await fetch(API+'/api/upload', {method:'POST', body:fd});
+    const d = await r.json();
+    toast(`Đã upload ${d.uploaded.length} file`);
+    refreshFiles();
+  } catch(e) { toast('Upload lỗi: '+e.message, 'error'); }
+}
+
+// === File List ===
+async function refreshFiles() {
+  try {
+    const r = await fetch(API+'/api/files');
+    const d = await r.json();
+    renderPdfs(d.pdfs);
+    renderMds(d.markdowns);
+  } catch(e) { console.error(e); }
+}
+
+function renderPdfs(files) {
+  const el = document.getElementById('pdfList');
+  document.getElementById('pdfCount').textContent = files.length ? `(${files.length})` : '';
+  if(!files.length) { el.innerHTML='<div class="empty">Chưa có file nào</div>'; return; }
+  el.innerHTML = files.map(f => `
+    <div class="file-item">
+      <span class="file-name">📄 ${f.name}</span>
+      <span class="file-size">${fmt(f.size)}</span>
+      <div class="file-actions">
+        <button class="btn btn-sm btn-danger" onclick="deleteFile('${f.name}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMds(files) {
+  const el = document.getElementById('mdList');
+  document.getElementById('mdCount').textContent = files.length ? `(${files.length})` : '';
+  if(!files.length) { el.innerHTML='<div class="empty">Chưa có kết quả</div>'; return; }
+  el.innerHTML = files.map(f => `
+    <div class="file-item">
+      <span class="file-name">📝 ${f.name}</span>
+      <span class="file-size">${fmt(f.size)}</span>
+      <div class="file-actions">
+        <button class="btn btn-sm btn-ghost" onclick="previewFile('${f.name}')">👁</button>
+        <button class="btn btn-sm btn-success" onclick="downloadFile('${f.name}')">⬇</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// === OCR ===
+async function startOcr() {
+  try {
+    const r = await fetch(API+'/api/ocr', {method:'POST', headers:{'Content-Type':'application/json'}});
+    const d = await r.json();
+    if(d.error) { toast(d.error, 'error'); return; }
+    toast(`Bắt đầu OCR ${d.started} file`);
+    document.getElementById('progressBox').classList.add('active');
+    document.getElementById('btnOcr').disabled = true;
+    startPolling();
+  } catch(e) { toast('Lỗi: '+e.message, 'error'); }
+}
+
+function startPolling() {
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 1000);
+}
+
+async function pollStatus() {
+  try {
+    const r = await fetch(API+'/api/status');
+    const s = await r.json();
+
+    const pct = s.files_total > 0
+      ? Math.round(((s.files_done + (s.total_pages>0 ? s.current_page/s.total_pages : 0)) / s.files_total) * 100)
+      : 0;
+
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressText').textContent = pct + '%';
+    document.getElementById('progressFile').textContent = s.current_file || '—';
+    document.getElementById('progressTime').textContent = s.elapsed + 's';
+    document.getElementById('statFiles').textContent = s.files_done + '/' + s.files_total;
+    document.getElementById('statPages').textContent = s.current_page + '/' + s.total_pages;
+    document.getElementById('statTime').textContent = s.elapsed + 's';
+
+    if(!s.running && s.files_total > 0) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      document.getElementById('progressBar').style.width = '100%';
+      document.getElementById('progressText').textContent = '100%';
+      document.getElementById('btnOcr').disabled = false;
+
+      const ok = s.results.filter(r=>r.status==='ok').length;
+      toast(`OCR xong! ${ok}/${s.files_total} thành công`);
+      setTimeout(() => {
+        document.getElementById('progressBox').classList.remove('active');
+        refreshFiles();
+      }, 2000);
+    }
+  } catch(e) { console.error(e); }
+}
+
+// === Actions ===
+async function deleteFile(name) {
+  await fetch(API+'/api/delete/'+name, {method:'DELETE'});
+  refreshFiles();
+}
+
+async function previewFile(name) {
+  try {
+    const r = await fetch(API+'/api/preview/'+name);
+    const d = await r.json();
+    document.getElementById('modalTitle').textContent = name;
+    // Simple markdown-like rendering
+    let html = d.content
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\n{2,}/g,'<br><br>')
+      .replace(/\n/g,'<br>');
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('modalOverlay').classList.add('active');
+  } catch(e) { toast('Preview lỗi', 'error'); }
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+function downloadFile(name) { window.open(API+'/api/download/'+name); }
+function downloadAll() { window.open(API+'/api/download_all'); }
+
+// === Init ===
+refreshFiles();
+// Check if OCR is already running
+fetch(API+'/api/status').then(r=>r.json()).then(s => {
+  if(s.running) {
+    document.getElementById('progressBox').classList.add('active');
+    document.getElementById('btnOcr').disabled = true;
+    startPolling();
+  }
+});
+</script>
+</body>
+</html>

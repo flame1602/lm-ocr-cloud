@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Data (không push lên git)
+/data/
+*.pdf
+output_markdown/
+
+# Checkpoints
+.ipynb_checkpoints/
