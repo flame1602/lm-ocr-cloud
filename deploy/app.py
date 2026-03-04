@@ -389,7 +389,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle
   </div>
   <div class="cd">
     <h2>📤 Upload PDF</h2>
-    <div class="uz" id="uz"><div class="em">📁</div><p>Kéo thả file PDF hoặc <b>nhấn để chọn</b></p><input type="file" id="fi" multiple accept=".pdf"></div>
+    <label for="fi" class="uz" id="uz"><div class="em">📁</div><p>Kéo thả file PDF hoặc <b>nhấn để chọn</b></p><input type="file" id="fi" multiple accept=".pdf"></label>
   </div>
   <div class="gr">
     <div class="cd">
