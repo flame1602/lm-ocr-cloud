@@ -19,6 +19,7 @@ from flask import (
     Flask, request, jsonify, send_file, send_from_directory,
     session, redirect, url_for, make_response
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 import fitz
 from openai import OpenAI
 
@@ -147,7 +148,11 @@ def ocr_worker(pdfs):
 
 # === Flask App ===
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.secret_key = SECRET_KEY
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False  # Cloud Run terminates TLS at LB
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max upload
 
 
 # --- Auth Routes ---
