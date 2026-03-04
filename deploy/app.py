@@ -395,12 +395,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle
     <div class="cd">
       <h2>📋 File PDF <span id="pc" style="color:var(--text2);font-weight:400"></span></h2>
       <div id="pl" class="fl"><div class="emp">Chưa có file</div></div>
-      <div style="margin-top:12px"><button class="btn bp bf" id="bo" onclick="sOcr()">🔍 Bắt đầu OCR</button></div>
+      <div style="margin-top:12px"><button class="btn bp bf" id="bo">🔍 Bắt đầu OCR</button></div>
     </div>
     <div class="cd">
       <h2>✅ Kết quả <span id="mc2" style="color:var(--text2);font-weight:400"></span></h2>
       <div id="ml" class="fl"><div class="emp">Chưa có kết quả</div></div>
-      <div style="margin-top:12px"><button class="btn bk bf" onclick="dAll()">📦 Tải tất cả (ZIP)</button></div>
+      <div style="margin-top:12px"><button class="btn bk bf" id="btnAll">📦 Tải tất cả (ZIP)</button></div>
     </div>
   </div>
   <div class="cd pb" id="pbx">
@@ -412,33 +412,37 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(circle
   </div>
   <div class="cd pb" id="trx"><h2>📊 Thời gian xử lý</h2><div id="trbody"></div></div>
 </div>
-<div class="mo" id="mov" onclick="if(event.target===this)cMo()"><div class="ml"><div class="mh"><h3 id="mt" style="font-size:14px">Preview</h3><button class="mc" onclick="cMo()">✕</button></div><div class="mb" id="mbd"></div></div></div>
+<div class="mo" id="mov"><div class="ml"><div class="mh"><h3 id="mt" style="font-size:14px">Preview</h3><button class="mc" id="btnCloseMo">✕</button></div><div class="mb" id="mbd"></div></div></div>
 <div class="tt" id="tt"></div>
 <script>
-let pt=null;
-function fm(b){return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'}
-function tw(m){const e=document.getElementById('tt');e.textContent=m;e.className='tt on';setTimeout(()=>e.classList.remove('on'),3000)}
-const uz=document.getElementById('uz'),fi=document.getElementById('fi');
-uz.onclick=()=>fi.click();
-uz.ondragover=e=>{e.preventDefault();uz.classList.add('dg')};
-uz.ondragleave=()=>uz.classList.remove('dg');
-uz.ondrop=e=>{e.preventDefault();uz.classList.remove('dg');uF(e.dataTransfer.files)};
-fi.onchange=()=>{if(fi.files.length)uF(fi.files)};
-async function uF(fs){const fd=new FormData();let c=0;for(const f of fs)if(f.name.toLowerCase().endsWith('.pdf')){fd.append('files',f);c++}if(!c){tw('Chỉ hỗ trợ PDF');return}try{const r=await(await fetch('/api/upload',{method:'POST',body:fd})).json();if(r.error==='Unauthorized'){window.location='/login';return}tw('Upload '+r.uploaded.length+' file');rF()}catch(e){tw('Lỗi: '+e.message)}}
-async function rF(){try{const r=await fetch('/api/files');if(r.status===401){window.location='/login';return}const d=await r.json();rP(d.pdfs);rM(d.markdowns)}catch(e){console.error(e)}}
-function rP(fs){const e=document.getElementById('pl');document.getElementById('pc').textContent=fs.length?'('+fs.length+')':'';if(!fs.length){e.innerHTML='<div class="emp">Chưa có file</div>';return}e.innerHTML=fs.map(f=>'<div class="fi"><span class="fn">📄 '+f.name+'</span><span class="fs">'+fm(f.size)+'</span><div class="fa"><button class="btn bs bd" onclick="dF(\''+f.name+'\')">&times;</button></div></div>').join('')}
-function rM(fs){const e=document.getElementById('ml');document.getElementById('mc2').textContent=fs.length?'('+fs.length+')':'';if(!fs.length){e.innerHTML='<div class="emp">Chưa có kết quả</div>';return}e.innerHTML=fs.map(f=>'<div class="fi"><span class="fn">📝 '+f.name+'</span><span class="fs">'+fm(f.size)+'</span><div class="fa"><button class="btn bs bg" onclick="pV(\''+f.name+'\')">&equiv;</button><button class="btn bs bk" onclick="dD(\''+f.name+'\')">&darr;</button></div></div>').join('')}
-async function sOcr(){try{const r=await(await fetch('/api/ocr',{method:'POST',headers:{'Content-Type':'application/json'}})).json();if(r.error){tw(r.error);return}tw('OCR '+r.started+' file');document.getElementById('pbx').classList.add('on');document.getElementById('bo').disabled=true;sP()}catch(e){tw('Lỗi: '+e.message)}}
-function sP(){if(pt)clearInterval(pt);pt=setInterval(pS,1000)}
-async function pS(){try{const s=await(await fetch('/api/status')).json();const p=s.files_total>0?Math.round(((s.files_done+(s.total_pages>0?s.current_page/s.total_pages:0))/s.files_total)*100):0;document.getElementById('pba').style.width=p+'%';document.getElementById('ptx').textContent=p+'%';document.getElementById('pfl').textContent=s.current_file||'—';document.getElementById('ptm').textContent=s.elapsed+'s';document.getElementById('sf').textContent=s.files_done+'/'+s.files_total;document.getElementById('sp').textContent=s.current_page+'/'+s.total_pages;document.getElementById('se').textContent=s.elapsed+'s';if(!s.running&&s.files_total>0){clearInterval(pt);pt=null;document.getElementById('pba').style.width='100%';document.getElementById('ptx').textContent='100%';document.getElementById('bo').disabled=false;const ok=s.results.filter(r=>r.status==='ok').length;tw('Xong! '+ok+'/'+s.files_total+' OK ('+s.elapsed+'s)');buildReport(s);setTimeout(()=>{document.getElementById('pbx').classList.remove('on');rF()},2000)}}catch(e){console.error(e)}}
-function buildReport(s){if(!s.results||!s.results.length)return;const box=document.getElementById('trx');box.classList.add('on');let h='<div class="tr"><table><thead><tr><th>File</th><th>Trang</th><th>PDF→Ảnh</th><th>OCR</th><th>TB/trang</th></tr></thead><tbody>';let tP=0,tO=0,tI=0;s.results.filter(r=>r.status==='ok').forEach(r=>{h+='<tr><td>'+r.file+'</td><td>'+r.pages+'</td><td>'+r.time_img+'s</td><td>'+r.time_ocr+'s</td><td>'+r.avg_per_page+'s</td></tr>';tP+=r.pages;tO+=r.time_ocr;tI+=r.time_img});h+='</tbody><tfoot><tr><td><b>TỔNG</b></td><td>'+tP+'</td><td>'+tI.toFixed(1)+'s</td><td>'+tO.toFixed(1)+'s</td><td>'+(tO/Math.max(tP,1)).toFixed(2)+'s</td></tr></tfoot></table></div>';document.getElementById('trbody').innerHTML=h}
-async function dF(n){await fetch('/api/delete/'+n,{method:'DELETE'});rF()}
-async function pV(n){try{const r=await fetch('/api/preview/'+n);if(r.status===401){window.location='/login';return}const d=await r.json();document.getElementById('mt').textContent=n;document.getElementById('mbd').textContent=d.content;document.getElementById('mov').classList.add('on')}catch(e){tw('Lỗi')}}
-function cMo(){document.getElementById('mov').classList.remove('on')}
-function dD(n){window.open('/api/download/'+n)}
-function dAll(){window.open('/api/download_all')}
+var pt=null;
+function fm(b){if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";}
+function tw(m){var e=document.getElementById("tt");e.textContent=m;e.className="tt on";setTimeout(function(){e.classList.remove("on");},3000);}
+var uz=document.getElementById("uz"),fi=document.getElementById("fi");
+uz.addEventListener("click",function(){fi.click();});
+uz.addEventListener("dragover",function(e){e.preventDefault();uz.classList.add("dg");});
+uz.addEventListener("dragleave",function(){uz.classList.remove("dg");});
+uz.addEventListener("drop",function(e){e.preventDefault();uz.classList.remove("dg");uF(e.dataTransfer.files);});
+fi.addEventListener("change",function(){if(fi.files.length)uF(fi.files);});
+function uF(fs){var fd=new FormData();var c=0;for(var i=0;i<fs.length;i++){if(fs[i].name.toLowerCase().endsWith(".pdf")){fd.append("files",fs[i]);c++;}}if(!c){tw("Chi ho tro PDF");return;}fetch("/api/upload",{method:"POST",body:fd}).then(function(r){return r.json();}).then(function(r){if(r.error==="Unauthorized"){window.location="/login";return;}tw("Upload "+r.uploaded.length+" file");rF();}).catch(function(e){tw("Loi: "+e.message);});}
+function rF(){fetch("/api/files").then(function(r){if(r.status===401){window.location="/login";return;}return r.json();}).then(function(d){if(d){rP(d.pdfs);rM(d.markdowns);}}).catch(function(e){console.error(e);});}
+function rP(fs){var e=document.getElementById("pl");document.getElementById("pc").textContent=fs.length?"("+fs.length+")":"";if(!fs.length){e.innerHTML="<div class='emp'>Chua co file</div>";return;}var h="";for(var i=0;i<fs.length;i++){h+="<div class='fi'><span class='fn'>"+fs[i].name+"</span><span class='fs'>"+fm(fs[i].size)+"</span><div class='fa'><button class='btn bs bd' data-del='"+fs[i].name+"'>x</button></div></div>";}e.innerHTML=h;e.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){dF(b.getAttribute("data-del"));});});}
+function rM(fs){var e=document.getElementById("ml");document.getElementById("mc2").textContent=fs.length?"("+fs.length+")":"";if(!fs.length){e.innerHTML="<div class='emp'>Chua co ket qua</div>";return;}var h="";for(var i=0;i<fs.length;i++){h+="<div class='fi'><span class='fn'>"+fs[i].name+"</span><span class='fs'>"+fm(fs[i].size)+"</span><div class='fa'><button class='btn bs bg' data-pv='"+fs[i].name+"'>&#9776;</button><button class='btn bs bk' data-dl='"+fs[i].name+"'>&#8595;</button></div></div>";}e.innerHTML=h;e.querySelectorAll("[data-pv]").forEach(function(b){b.addEventListener("click",function(){pV(b.getAttribute("data-pv"));});});e.querySelectorAll("[data-dl]").forEach(function(b){b.addEventListener("click",function(){dD(b.getAttribute("data-dl"));});});}
+function sOcr(){fetch("/api/ocr",{method:"POST",headers:{"Content-Type":"application/json"}}).then(function(r){return r.json();}).then(function(r){if(r.error){tw(r.error);return;}tw("OCR "+r.started+" file");document.getElementById("pbx").classList.add("on");document.getElementById("bo").disabled=true;sP();}).catch(function(e){tw("Loi: "+e.message);});}
+document.getElementById("bo").addEventListener("click",sOcr);
+function sP(){if(pt)clearInterval(pt);pt=setInterval(pS,1000);}
+function pS(){fetch("/api/status").then(function(r){return r.json();}).then(function(s){var p=s.files_total>0?Math.round(((s.files_done+(s.total_pages>0?s.current_page/s.total_pages:0))/s.files_total)*100):0;document.getElementById("pba").style.width=p+"%";document.getElementById("ptx").textContent=p+"%";document.getElementById("pfl").textContent=s.current_file||"--";document.getElementById("ptm").textContent=s.elapsed+"s";document.getElementById("sf").textContent=s.files_done+"/"+s.files_total;document.getElementById("sp").textContent=s.current_page+"/"+s.total_pages;document.getElementById("se").textContent=s.elapsed+"s";if(!s.running&&s.files_total>0){clearInterval(pt);pt=null;document.getElementById("pba").style.width="100%";document.getElementById("ptx").textContent="100%";document.getElementById("bo").disabled=false;var ok=s.results.filter(function(r){return r.status==="ok";}).length;tw("Xong! "+ok+"/"+s.files_total+" OK ("+s.elapsed+"s)");buildReport(s);setTimeout(function(){document.getElementById("pbx").classList.remove("on");rF();},2000);}}).catch(function(e){console.error(e);});}
+function buildReport(s){if(!s.results||!s.results.length)return;var box=document.getElementById("trx");box.classList.add("on");var h="<div class='tr'><table><thead><tr><th>File</th><th>Trang</th><th>PDF-Anh</th><th>OCR</th><th>TB/trang</th></tr></thead><tbody>";var tP=0,tO=0,tI=0;for(var i=0;i<s.results.length;i++){var r=s.results[i];if(r.status==="ok"){h+="<tr><td>"+r.file+"</td><td>"+r.pages+"</td><td>"+r.time_img+"s</td><td>"+r.time_ocr+"s</td><td>"+r.avg_per_page+"s</td></tr>";tP+=r.pages;tO+=r.time_ocr;tI+=r.time_img;}}h+="</tbody><tfoot><tr><td><b>TONG</b></td><td>"+tP+"</td><td>"+tI.toFixed(1)+"s</td><td>"+tO.toFixed(1)+"s</td><td>"+(tO/Math.max(tP,1)).toFixed(2)+"s</td></tr></tfoot></table></div>";document.getElementById("trbody").innerHTML=h;}
+function dF(n){fetch("/api/delete/"+n,{method:"DELETE"}).then(function(){rF();});}
+function pV(n){fetch("/api/preview/"+n).then(function(r){if(r.status===401){window.location="/login";return;}return r.json();}).then(function(d){if(d){document.getElementById("mt").textContent=n;document.getElementById("mbd").textContent=d.content;document.getElementById("mov").classList.add("on");}}).catch(function(){tw("Loi");});}
+function cMo(){document.getElementById("mov").classList.remove("on");}
+function dD(n){window.open("/api/download/"+n);}
+function dAll(){window.open("/api/download_all");}
+document.getElementById("btnAll").addEventListener("click",dAll);
+document.getElementById("btnCloseMo").addEventListener("click",cMo);
+document.getElementById("mov").addEventListener("click",function(e){if(e.target===document.getElementById("mov"))cMo();});
 rF();
-fetch('/api/status').then(r=>{if(r.status===401){window.location='/login';return r.json()}return r.json()}).then(s=>{if(s&&s.running){document.getElementById('pbx').classList.add('on');document.getElementById('bo').disabled=true;sP()}}).catch(()=>{});
+fetch("/api/status").then(function(r){return r.json();}).then(function(s){if(s&&s.running){document.getElementById("pbx").classList.add("on");document.getElementById("bo").disabled=true;sP();}}).catch(function(){});
 </script>
 </body></html>"""
 
