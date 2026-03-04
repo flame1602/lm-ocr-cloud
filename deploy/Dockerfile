@@ -1,7 +1,7 @@
 FROM vllm/vllm-openai:latest
 
 # Install additional dependencies
-RUN pip install --no-cache-dir pymupdf openai flask PyMuPDF
+RUN pip install --ignore-installed --no-cache-dir pymupdf openai flask PyMuPDF
 
 # Create app directory
 WORKDIR /app
