@@ -11,21 +11,21 @@ MODEL="zai-org/GLM-OCR"
 # Create data dirs
 mkdir -p /data/input_pdfs /data/output_markdown
 
-# STEP 1: Start Flask FIRST so Cloud Run sees port 8080 immediately
+# STEP 1: Start Flask FIRST so Cloud Run sees port immediately
 echo "🌐 Starting Web App on port ${PORT}..."
 echo "🔐 Password: ${APP_PASSWORD:-glm-ocr-2024}"
 cd /app
-python app.py &
+python3 app.py &
 FLASK_PID=$!
 
 # Wait for Flask to bind
 sleep 3
 echo "✅ Flask ready on port ${PORT}"
 
-# STEP 2: Start vLLM in background (will take a few minutes to load model)
+# STEP 2: Start vLLM in background (will take 3-5 minutes to load model)
 echo ""
 echo "🚀 Starting vLLM server (GLM-OCR)... (this takes 3-5 minutes)"
-python -m vllm.entrypoints.openai.api_server \
+python3 -m vllm.entrypoints.openai.api_server \
     --model "$MODEL" \
     --allowed-local-media-path / \
     --port "$VLLM_PORT" \
