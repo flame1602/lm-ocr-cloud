@@ -430,7 +430,6 @@ var pt=null;
 function fm(b){if(b<1024)return b+"B";if(b<1048576)return(b/1024).toFixed(1)+"KB";return(b/1048576).toFixed(1)+"MB";}
 function tw(m){var e=document.getElementById("tt");e.textContent=m;e.className="tt on";setTimeout(function(){e.classList.remove("on");},3000);}
 var uz=document.getElementById("uz"),fi=document.getElementById("fi");
-uz.addEventListener("click",function(){fi.click();});
 uz.addEventListener("dragover",function(e){e.preventDefault();uz.classList.add("dg");});
 uz.addEventListener("dragleave",function(){uz.classList.remove("dg");});
 uz.addEventListener("drop",function(e){e.preventDefault();uz.classList.remove("dg");uF(e.dataTransfer.files);});
