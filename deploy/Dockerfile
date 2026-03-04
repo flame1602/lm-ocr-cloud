@@ -1,7 +1,10 @@
 FROM vllm/vllm-openai:latest
 
+# CRITICAL: Clear base image ENTRYPOINT so our start.sh runs directly
+ENTRYPOINT []
+
 # Install additional dependencies
-RUN pip install --ignore-installed --no-cache-dir pymupdf openai flask PyMuPDF
+RUN pip install --ignore-installed --no-cache-dir pymupdf openai flask
 
 # Create app directory
 WORKDIR /app
@@ -22,8 +25,4 @@ ENV OUTPUT_DIR=/data/output_markdown
 # Expose web port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=300s \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]
