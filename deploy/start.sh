@@ -1,6 +1,4 @@
 #!/bin/bash
-set -e
-
 echo "═══════════════════════════════════════"
 echo "  GLM-OCR Server Startup"
 echo "═══════════════════════════════════════"
@@ -13,8 +11,20 @@ MODEL="zai-org/GLM-OCR"
 # Create data dirs
 mkdir -p /data/input_pdfs /data/output_markdown
 
+# STEP 1: Start Flask FIRST so Cloud Run sees port 8080 immediately
+echo "🌐 Starting Web App on port ${PORT}..."
+echo "🔐 Password: ${APP_PASSWORD:-glm-ocr-2024}"
+cd /app
+python app.py &
+FLASK_PID=$!
+
+# Wait for Flask to bind
+sleep 3
+echo "✅ Flask ready on port ${PORT}"
+
+# STEP 2: Start vLLM in background (will take a few minutes to load model)
 echo ""
-echo "🚀 Starting vLLM server (GLM-OCR)..."
+echo "🚀 Starting vLLM server (GLM-OCR)... (this takes 3-5 minutes)"
 python -m vllm.entrypoints.openai.api_server \
     --model "$MODEL" \
     --allowed-local-media-path / \
@@ -22,10 +32,10 @@ python -m vllm.entrypoints.openai.api_server \
     --served-model-name glm-ocr \
     --gpu-memory-utilization 0.90 \
     --max-model-len 16384 &
+VLLM_PID=$!
 
-echo "🌐 Starting Web App on port ${PORT}..."
-echo "🔐 Password: ${APP_PASSWORD:-glm-ocr-2024}"
-echo ""
-
-cd /app
-exec python app.py
+# Wait for either process to exit
+wait -n $FLASK_PID $VLLM_PID
+echo "❌ A process exited unexpectedly"
+kill $FLASK_PID $VLLM_PID 2>/dev/null
+exit 1
