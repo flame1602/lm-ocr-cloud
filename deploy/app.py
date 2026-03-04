@@ -26,7 +26,7 @@ from openai import OpenAI
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "glm-ocr-2024")
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 VLLM_PORT = int(os.environ.get("VLLM_PORT", "8899"))
-WEB_PORT = int(os.environ.get("WEB_PORT", "5000"))
+PORT = int(os.environ.get("PORT", "8080"))
 INPUT_DIR = os.environ.get("INPUT_DIR", "/data/input_pdfs")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/data/output_markdown")
 DPI = 200
@@ -440,5 +440,5 @@ fetch('/api/status').then(r=>{if(r.status===401){window.location='/login';return
 
 if __name__ == "__main__":
     print(f"🔐 Password: {APP_PASSWORD}")
-    print(f"🌐 Starting on port {WEB_PORT}...")
-    app.run(host="0.0.0.0", port=WEB_PORT, debug=False)
+    print(f"🌐 Starting on port {PORT}...")
+    app.run(host="0.0.0.0", port=PORT, debug=False)

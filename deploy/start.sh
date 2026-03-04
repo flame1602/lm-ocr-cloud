@@ -7,7 +7,7 @@ echo "════════════════════════�
 
 # Config
 VLLM_PORT=${VLLM_PORT:-8899}
-WEB_PORT=${WEB_PORT:-5000}
+PORT=${PORT:-8080}
 MODEL="zai-org/GLM-OCR"
 
 # Create data dirs
@@ -23,24 +23,7 @@ python -m vllm.entrypoints.openai.api_server \
     --gpu-memory-utilization 0.90 \
     --max-model-len 16384 &
 
-VLLM_PID=$!
-
-echo "⏳ Waiting for vLLM..."
-SECONDS=0
-while [ $SECONDS -lt 600 ]; do
-    if curl -s "http://localhost:${VLLM_PORT}/health" > /dev/null 2>&1; then
-        echo "✅ vLLM ready! (${SECONDS}s)"
-        break
-    fi
-    if ! kill -0 $VLLM_PID 2>/dev/null; then
-        echo "❌ vLLM process died!"
-        exit 1
-    fi
-    sleep 5
-done
-
-echo ""
-echo "🌐 Starting Web App on port ${WEB_PORT}..."
+echo "🌐 Starting Web App on port ${PORT}..."
 echo "🔐 Password: ${APP_PASSWORD:-glm-ocr-2024}"
 echo ""
 
